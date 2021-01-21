@@ -8,8 +8,9 @@ This project listens to meteorological station radio signals, decodes them and r
 3. The Python script makes use of the non-standard library `pysolar` (https://pysolar.readthedocs.io/en/latest/) to calculate the position of the Sun.
 
 ## Runing the pipeline
-1. Make sure you change permissions of `run.sh` to make it executable.
-2. Run `run.sh`.
+1. Modify your Python path in `run.sh`.
+2. Make sure you change permissions of `run.sh` to make it executable.
+3. Run `run.sh`.
 
 ## Notes and modifications
 1. `run.sh` essentially runs two infinite while-loops: the `rtl-433` receiver and decoder, and the `temp_live.py` script for plotting and saving. These processes detatch from the running terminal and so can only be killed via their `PID`, or with `killall python`.
