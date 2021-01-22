@@ -1,17 +1,19 @@
 import time
 import numpy as np
-from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from matplotlib.dates import num2date
 import matplotlib
 from argparse import ArgumentParser
 from funcs import make_fig, json2data, movavg, solar_height, \
-                  get_sunrise_sunset, plot_sunrise_sunset
+                  get_sunrise_sunset, plot_sunrise_sunset, check_jumps
 parser = ArgumentParser()
 parser.add_argument("-v", "--verbose", action="store_true")
 args = parser.parse_args()
 
 matplotlib.use("Agg")  # backend not using IPython
+fig, ax, axh = make_fig()
+
+signal_every = 151  # signal every 02m31s
 
 try:  # pre-existing data in output file
     t, T, h = [], [], []
@@ -23,9 +25,14 @@ try:  # pre-existing data in output file
             T.append(TT)
             h.append(solar_height(num2date(tt)))
 
+            # check and fix discontinuities
+            try:
+                t, T, h = check_jumps(tt, t_b4, signal_every, ax, *(t, T, h))
+            except NameError:
+                pass
+
             # propagate current data to next block of code
             t_b4 = tt
-            T_b4 = TT
             data_b4 = line
 
         sr, ss = get_sunrise_sunset(tt)
@@ -34,14 +41,18 @@ except:  # output file is empty
     sr, ss = None, None
 
 
-fig, ax, axh = make_fig()
 has_sr, has_ss = plot_sunrise_sunset(ax, t, sr, ss)
 p, = axh.plot(t, h, "grey", ls="-", lw=5, alpha=0.5)
 l, = ax.plot_date(t, T, fmt="b.")
 m, = ax.plot([], [], "r-", lw=2.5)
 plt.draw()
+t_now = num2date(tt)
+if args.verbose:
+    print(t_now.year, t_now.month, t_now.day,
+          t_now.hour, t_now.minute, t_now.second, TT)
+fig.savefig("temp.pdf", bbox_inches="tight")
+time.sleep(signal_every)
 
-signal_every = 151  # signal every 02m31s
 
 while True:
     with open("temp.out", "r") as f:
@@ -66,25 +77,10 @@ while True:
     T.append(TT)
     h.append(solar_height(num2date(tt)))
 
-    # interpolate discontinuities (e.g. stopped recording)
+    # check and fix discontinuities
     try:
-        missed_signals = int(86400*(tt - t_b4) / signal_every)
-        if missed_signals > 10:
-            # interpolate/re-calculate
-            t_interp = np.linspace(t_b4, tt, missed_signals+1)[1:-1]
-            T_interp = interp1d(t, T, kind="slinear")(t_interp)
-            h_recalc = [solar_height(num2date(tt_int)) for tt_int in t_interp]
-            # inject to existing data
-            t = t[:-1] + t_interp.tolist() + [t[-1]]
-            T = T[:-1] + T_interp.tolist() + [T[-1]]
-            h = h[:-1] + h_recalc + [h[-1]]
-            # indicate interpolated region in plot
-            ax.axvspan(xmin=t_interp[0], xmax=t_interp[-1],
-                       ymin=0, ymax=(1/15),
-                       facecolor="indianred", hatch="xx")
-    except NameError:  # file is empty (just started recording)
-        pass
-    except ValueError:  # not enough data points to interpolate
+        t, T, h = check_jumps(tt, t_b4, signal_every, ax, *(t, T, h))
+    except NameError:
         pass
 
     # plot new data
@@ -141,6 +137,5 @@ while True:
 
     # make data from current state available in the next loop (b4 = before)
     t_b4 = tt
-    T_b4 = TT
     data_b4 = data
     time.sleep(signal_every)
