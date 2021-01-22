@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import interp1d
 from pysolar import solar
 import matplotlib.pyplot as plt
 from matplotlib.dates import datestr2num, num2date
@@ -69,3 +70,25 @@ def plot_sunrise_sunset(ax, t, sr, ss, has_sr=False, has_ss=False):
         ax.axvline(ss, c="orange", lw=5, alpha=0.5)
         has_ss = True
     return has_sr, has_ss
+
+def check_jumps(tt, t_b4, signal_every, ax, *data):
+    """ Check for, and interpolate discontinuities (e.g. stopped recording)"""
+    t, T, h = data
+    try:
+        missed_signals = int(86400*(tt - t_b4) / signal_every)
+        if missed_signals > 10:
+            # interpolate/re-calculate
+            t_interp = np.linspace(t_b4, tt, missed_signals+1)[1:-1]
+            T_interp = interp1d(t, T, kind="slinear")(t_interp)
+            h_recalc = [solar_height(num2date(tt_int)) for tt_int in t_interp]
+            # inject to existing data
+            t = t[:-1] + t_interp.tolist() + [t[-1]]
+            T = T[:-1] + T_interp.tolist() + [T[-1]]
+            h = h[:-1] + h_recalc + [h[-1]]
+            # indicate interpolated region in plot
+            ax.axvspan(xmin=t_interp[0], xmax=t_interp[-1],
+                       ymin=0, ymax=(1/15),
+                       facecolor="indianred", hatch="xx")
+    except ValueError:  # not enough data points to interpolate
+        pass
+    return t, T, h
