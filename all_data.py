@@ -35,7 +35,7 @@ ax.set_xlim(t[0], t[-1])
 ax.grid(which="major", color="k", ls=":", lw=1.5)
 ax.grid(which="minor", color="k", ls=":", lw=1)
 # plot day and night
-for i, h0 in enumerate(sr_ss):
+for h0 in sr_ss:
     ax.axvspan(h0[0], h0[1], color="white")
     ax.axvspan(h0[0], h0[1], color="y", alpha=0.3)
 # plot data
