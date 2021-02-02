@@ -47,10 +47,13 @@ def movavg(t, T, size=11):
     t = t[size//2 : -size//2 + 1]
     return t, T
 
-def solar_height(t, lat=37.9, lon=23.9, gmt_offset=+2):
+def solar_height(t, lat=37.9, lon=23.9, gmt_offset=+2, mode="normal"):
     """Calculate height of the Sun given a time, and geographical coords."""
     lon_mod = lon-15*gmt_offset  # longitude relative to center of timezone
-    return solar.get_altitude(lat, lon_mod, t)
+    if mode == "normal":
+        return solar.get_altitude(lat, lon_mod, t)
+    elif mode == "fast":
+        return solar.get_altitude_fast(lat, lon_mod, t)
 
 def get_sunrise_sunset(date, lat=37.9, lon=23.9, gmt_offset=+2):
     """Calculate sunrise and sunset times for a set of given coordinates."""
